@@ -27,6 +27,8 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'pcre2el)
+(require 'rx)
 
 (defun query-replace-parallel--prompt ()
   (concat "Query replace parallel"
