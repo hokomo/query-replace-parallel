@@ -65,7 +65,7 @@
                        `(submatch ,@(walk rest)))
                       (_
                        (mapcar #'walk root))))))
-      (let ((form (walk (ignore-errors (rxt-elisp-to-rx regexp)))))
+      (let ((form (walk (rxt-elisp-to-rx regexp))))
         (list (rx-to-string form) (nreverse groups))))))
 
 (defun query-replace-parallel--table (pairs)
