@@ -91,7 +91,7 @@
   (string-replace "\\\\?" "\\?" (string-replace "\\" "\\\\" string)))
 
 (defun query-replace-parallel--patch-noedit (args)
-  (cl-destructuring-bind (newtext fixedcase literal noedit match-data
+  (cl-destructuring-bind (newtext fixedcase literal _noedit match-data
                           &optional backward)
       args
     (list newtext fixedcase literal nil match-data backward)))
