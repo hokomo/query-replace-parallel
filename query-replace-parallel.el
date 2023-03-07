@@ -139,12 +139,13 @@
                        (and (use-region-p) (region-noncontiguous-p)))))
   (let* ((table (query-replace-parallel--table pairs))
          (regexp (query-replace-parallel--matcher
-                  (mapcar #'cadddr table))))
+                  (mapcar #'cadddr table)))
+         (query-replace-parallel--description
+          (cons nil query-replace-parallel--description)))
     (advice-add #'replace-match-maybe-edit :filter-args
                 #'query-replace-parallel--patch-noedit)
     (advice-add #'query-replace-descr :around
                 #'query-replace-parallel--patch-description)
-    (push nil query-replace-parallel--description)
     (unwind-protect
         (perform-replace
          (propertize regexp 'query-replace-parallel--tag t)
@@ -153,8 +154,7 @@
       (advice-remove #'replace-match-maybe-edit
                      #'query-replace-parallel--patch-noedit)
       (advice-remove #'query-replace-descr
-                     #'query-replace-parallel--patch-description)
-      (pop query-replace-parallel--description))))
+                     #'query-replace-parallel--patch-description))))
 
 (provide 'query-replace-parallel)
 ;;; query-replace-parallel.el ends here
