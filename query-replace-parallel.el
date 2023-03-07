@@ -44,7 +44,7 @@
            finally (cl-return (list pairs delim backward))))
 
 (defun query-replace-parallel--matcher (regexps)
-  (rx-to-string `(or ,@(mapcar (lambda (s) `(group (regexp ,s))) regexps))))
+  (rx-to-string `(or ,@(mapcar (lambda (r) `(group (regexp ,r))) regexps))))
 
 (defun query-replace-parallel--flatten (regexp)
   (let ((i 1)
@@ -74,7 +74,8 @@
            do (cl-incf i (1+ (length groups)))))
 
 (defun query-replace-parallel--match-data (base groups)
-  (let ((data (make-vector (* 2 (1+ (if groups (apply #'max groups) 0))) nil)))
+  (let* ((n (if groups (apply #'max groups) 0))
+         (data (make-vector (* 2 (1+ n)) nil)))
     (setf (aref data 0) (match-beginning base)
           (aref data 1) (match-end base))
     (cl-loop for i from 1
