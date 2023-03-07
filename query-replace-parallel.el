@@ -104,10 +104,29 @@
 (defvar query-replace-parallel--description '())
 
 (defun query-replace-parallel--patch-description (oldfun string)
-  (funcall oldfun
-           (if (get-text-property 0 'query-replace-parallel--tag string)
-               (car query-replace-parallel--description)
-             string)))
+  (propertize
+   (funcall oldfun
+            (if (get-text-property 0 'query-replace-parallel--tag string)
+                (caar query-replace-parallel--description)
+              string))
+   'query-replace-parallel--tag t))
+
+(defun query-replace-parallel--patch-message (args)
+  (cl-destructuring-bind (format &optional arg &rest rest) args
+    (if (and (stringp arg)
+             (get-text-property 0 'query-replace-parallel--tag arg))
+        (let ((nformat (apply
+                        #'propertize
+                        (replace-regexp-in-string
+                         (rx "Query replacing" (group (* nonl)) "regexp %s")
+                         (concat "Query replacing parallel\\1"
+                                 (and (cdar query-replace-parallel--description)
+                                      "regexp ")
+                                 "%s")
+                         format)
+                        (text-properties-at 0 format))))
+          (cl-list* nformat arg rest))
+      args)))
 
 (defun query-replace-parallel--replace (data count)
   (cl-destructuring-bind (table regexp-flag) data
@@ -116,7 +135,7 @@
                       (match-beginning base))
                     table)
       (let ((original (match-data)))
-        (setf (car query-replace-parallel--description) from)
+        (setf (car query-replace-parallel--description) (cons from regexp-flag))
         (if (not regexp-flag)
             (replace-quote to)
           (set-match-data (query-replace-parallel--match-data base groups))
@@ -143,6 +162,8 @@
                 #'query-replace-parallel--patch-noedit)
     (advice-add #'query-replace-descr :around
                 #'query-replace-parallel--patch-description)
+    (advice-add #'message :filter-args
+                #'query-replace-parallel--patch-message)
     (unwind-protect
         (perform-replace
          (propertize regexp 'query-replace-parallel--tag t)
@@ -152,7 +173,9 @@
       (advice-remove #'replace-match-maybe-edit
                      #'query-replace-parallel--patch-noedit)
       (advice-remove #'query-replace-descr
-                     #'query-replace-parallel--patch-description))))
+                     #'query-replace-parallel--patch-description)
+      (advice-remove #'message
+                     #'query-replace-parallel--patch-message))))
 
 (defun query-replace-parallel
     (pairs &optional delimited start end backward region-noncontiguous-p)
