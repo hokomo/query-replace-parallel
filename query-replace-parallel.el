@@ -42,6 +42,8 @@
              = (query-replace-read-args
                 (query-replace-parallel--prompt regexp-flag) regexp-flag)
            for pair = (cons from to)
+           ;; NOTE: `query-replace-read-args' will return the last pair from
+           ;; history in case of empty input. That's our signal to stop reading.
            until (member pair pairs)
            collect pair into pairs
            finally (cl-return (list pairs delim backward))))
