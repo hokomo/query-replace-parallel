@@ -38,6 +38,21 @@
 		  (and (use-region-p) " in region")))
 
 (defun query-replace-parallel--read-args (regexp-flag)
+  "Interactively read replacement pairs for a parallel query
+replace by invoking `query-replace-read-args' multiple times.
+
+Reading stops when a replacement pair is repeated. Return the
+list (PAIRS DELIM BACKWARD).
+
+PAIRS is a list of conses (FROM . TO). FROM is the source string
+read from the user. If REGEXP-FLAG is nil, TO is the replacement
+string read from the user. Otherwise, TO can be a cons depending
+on whether the replacement string uses the Lisp expression `\,'
+feature or not.
+
+DELIM and BACKWARD are taken from the return value of the last
+call to `query-replace-read-args' and should be forwarded as the
+arguments to the query replacement functions."
   (cl-loop for (from to delim backward)
              = (query-replace-read-args
                 (query-replace-parallel--prompt regexp-flag) regexp-flag)
@@ -133,13 +148,22 @@
     (cl-destructuring-bind (base . (from to _nfrom groups))
         (cl-find-if #'match-beginning table :key #'car)
       (setf (caar query-replace-parallel--description) from)
-      (if (not regexp-flag)
+      ;; TO can either be a string or a cons. We handle the case where it's a
+      ;; literal string specially to avoid computing and setting the match data.
+      (if (and (stringp to) (not regexp-flag))
+          ;; Escape TO so that the calling `perform-replace' takes it literally.
           (replace-quote to)
         (let ((original (match-data)))
           (set-match-data (query-replace-parallel--match-data base groups))
           (unwind-protect
               (cl-etypecase to
                 (string
+                 ;; We first do what `perform-replace' would normally do, i.e.
+                 ;; substitute any references to captured groups, but while our
+                 ;; custom match data is active. Then, we escape all of the
+                 ;; backslash sequences so that they don't get interpreted again
+                 ;; by the calling `perform-replace', except for `\\?' which we
+                 ;; leave for the caller to handle.
                  (query-replace-parallel--quote
                   (match-substitute-replacement
                    to (not (and case-replace case-fold-search)))))
