@@ -156,18 +156,18 @@ arguments to the query replacement functions."
         (let ((original (match-data)))
           (set-match-data (query-replace-parallel--match-data base groups))
           (unwind-protect
-              (cl-etypecase to
-                (string
-                 ;; We first do what `perform-replace' would normally do, i.e.
-                 ;; substitute any references to captured groups, but while our
-                 ;; custom match data is active. Then, we escape all of the
-                 ;; backslash sequences so that they don't get interpreted again
-                 ;; by the calling `perform-replace', except for `\\?' which we
-                 ;; leave for the caller to handle.
-                 (query-replace-parallel--quote
-                  (match-substitute-replacement
-                   to (not (and case-replace case-fold-search)))))
-                (cons (funcall (car to) (cdr to) count)))
+              (let ((nto (cl-etypecase to
+                           (string to)
+                           (cons (funcall (car to) (cdr to) count)))))
+                ;; We first do what `perform-replace' would normally do, i.e.
+                ;; substitute any references to captured groups, but while our
+                ;; custom match data is active. Then, we escape all of the
+                ;; backslash sequences so that they don't get interpreted again
+                ;; by the calling `perform-replace', except for `\\?' which we
+                ;; leave for the caller to handle.
+                (query-replace-parallel--quote
+                 (match-substitute-replacement
+                  nto (not (and case-replace case-fold-search)))))
             (set-match-data original)))))))
 
 (defun query-replace-parallel-perform-replace
