@@ -149,6 +149,21 @@
 (defun query-replace-parallel-perform-replace
     (pairs query-flag regexp-flag delimited
      &optional map start end backward region-noncontiguous-p)
+  "Perform multiple replacements given by PAIRS as if by
+`perform-replace', except in parallel. That is, the replacements
+are performed in a single pass and cannot erroneously replace a
+previous replacement.
+
+Each element of PAIRS has to be a cons (FROM . TO), and specifies
+that occurrences of the regexp FROM should be replaced with TO.
+TO can either be a string or a cons, which have the same meaning
+as in `perform-replace'. Unlike `perform-replace' however, it
+cannot be a list of strings, and this function omits the
+`replace-count' argument.
+
+Arguments QUERY-FLAG, REGEXP-FLAG, DELIMITED, MAP, START, END,
+BACKWARD AND REGION-NONCONTIGUOUS-P are as in `perform-replace',
+which see."
   (let* ((table (query-replace-parallel--table pairs regexp-flag))
          (regexp (query-replace-parallel--matcher (mapcar #'cadddr table)))
          (query-replace-parallel--description
@@ -182,15 +197,43 @@
           backward
           (and (use-region-p) (region-noncontiguous-p)))))
 
-(defun query-replace-parallel
-    (pairs &optional delimited start end backward region-noncontiguous-p)
+(defun query-replace-parallel (pairs &optional delimited start end
+                                       backward region-noncontiguous-p)
+  "Perform multiple replacements given by PAIRS as if by
+`query-replace', except in parallel. That is, the replacements
+are performed in a single pass and cannot erroneously replace a
+previous replacement.
+
+Each element of PAIRS has to be a cons (FROM . TO), and specifies
+that occurrences of the string FROM should be replaced with the
+string TO.
+
+Arguments DELIMITED, START, END, BACKWARD and
+REGION-NONCONTIGUOUS-P are passed to
+`query-replace-parallel-perform-replace' (which see)."
   (interactive (query-replace-parallel--args nil))
   (query-replace-parallel-perform-replace
    pairs :query nil delimited nil start end backward
    region-noncontiguous-p))
 
-(defun query-replace-parallel-regexp
-    (pairs &optional delimited start end backward region-noncontiguous-p)
+(defun query-replace-parallel-regexp (pairs &optional delimited start end
+                                              backward region-noncontiguous-p)
+  "Perform multiple replacements given by PAIRS as if by
+`query-replace-regexp', except in parallel. That is, the
+replacements are performed in a single pass and cannot
+erroneously replace a previous replacement.
+
+Each element of PAIRS has to be a cons (FROM . TO), and specifies
+that matches of the regexp FROM should be replaced with the
+string TO, which is interpreted the same as the replacement
+string in `query-replace-regexp'.
+
+If more than one FROM regexp matches, the one appearing earlier
+in the list has priority.
+
+Arguments DELIMITED, START, END, BACKWARD and
+REGION-NONCONTIGUOUS-P are passed to
+`query-replace-parallel-perform-replace' (which see)."
   (interactive (query-replace-parallel--args :regexp))
   (query-replace-parallel-perform-replace
    pairs :query :regexp delimited nil start end backward
