@@ -148,7 +148,7 @@
 
 (defun query-replace-parallel-perform-replace
     (pairs query-flag regexp-flag delimited
-     &optional repeat-count map start end backward region-noncontiguous-p)
+     &optional map start end backward region-noncontiguous-p)
   (let* ((table (query-replace-parallel--table pairs regexp-flag))
          (regexp (query-replace-parallel--matcher (mapcar #'cadddr table)))
          (query-replace-parallel--description
@@ -163,7 +163,7 @@
         (perform-replace
          (propertize regexp 'query-replace-parallel--tag t)
          (cons (query-replace-parallel--replacer table regexp-flag) nil)
-         query-flag :regexp delimited repeat-count map start end backward
+         query-flag :regexp delimited nil map start end backward
          region-noncontiguous-p)
       (advice-remove #'replace-match-maybe-edit
                      #'query-replace-parallel--patch-noedit)
@@ -186,14 +186,14 @@
     (pairs &optional delimited start end backward region-noncontiguous-p)
   (interactive (query-replace-parallel--args nil))
   (query-replace-parallel-perform-replace
-   pairs :query nil delimited nil nil start end backward
+   pairs :query nil delimited nil start end backward
    region-noncontiguous-p))
 
 (defun query-replace-parallel-regexp
     (pairs &optional delimited start end backward region-noncontiguous-p)
   (interactive (query-replace-parallel--args :regexp))
   (query-replace-parallel-perform-replace
-   pairs :query :regexp delimited nil nil start end backward
+   pairs :query :regexp delimited nil start end backward
    region-noncontiguous-p))
 
 (provide 'query-replace-parallel)
