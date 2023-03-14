@@ -24,6 +24,160 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+;;; Commentary:
+
+;; * About
+;;
+;; This package provides a "parallel" version of `query-replace', capable of
+;; performing multiple different replacements with just a single pass, while
+;; eliminating the possibility of erroneously replacing a previous replacement.
+;; E.g. one can safely replace "foo" with "bar" and "bar" with "foo" at the same
+;; time.
+;;
+;; We provide the full functionality of `query-replace', including regexps,
+;; capture references (`\N', `\&'), Lisp expressions (`\,') and query edits
+;; (`\?'). See `query-replace-regexp' for the details.
+;;
+;; Use `query-replace-parallel' if you want to replace literal strings. This is
+;; the parallel counterpart to `query-replace'.
+;;
+;; Use `query-replace-parallel-regexp' if you want to replace regexps and use
+;; the various regexp replacement features. This is the parallel counterpart to
+;; `query-replace-regexp'.
+
+;; * Implementation
+;;
+;; The core of the package is `query-replace-parallel-perform-replace',
+;; implemented on top of the existing interactive replacement machinery, namely,
+;; `perform-replace'. Figuring out a way to do all of the replacements in a
+;; single pass while preserving all of its sophisticated functionality is
+;; tricky, but can be done. Just like Olin Shivers, we attempt a 100% solution
+;; (https://www.ccs.neu.edu/home/shivers/papers/sre.txt). :-)
+;;
+;; We describe the most general case of performing a series of regexp
+;; replacements, as the literal case can be implemented trivially on top.
+;;
+;; First, the user provides a series of replacement pairs (FROM . TO). FROM is a
+;; regexp, while TO can be a replacement string or a cons specifying the
+;; function to invoke to retrieve the replacement string (just like in
+;; `perform-replace').
+;;
+;; We invoke `perform-replace' once, with a "matcher regexp" that we construct
+;; by putting all of the FROM regexps into one big alternative construct, while
+;; wrapping each alternative in a separate capture group:
+;;
+;;   \(FROM-1\)\|...\|\(FROM-N\)
+;;
+;; This regexp allows us to match any of the given replacement pairs (those
+;; appearing earlier in the list have priority), while also being able to tell
+;; which particular pair matched. However, any of the FROM regexps might contain
+;; their own capture groups, so we can't immediately tell what are the indices
+;; of our top-level groups.
+;;
+;; More generally, we want the user to be able to treat each replacement in
+;; isolation and use advanced features such as explicitly numbered groups
+;; without having to manually adjust the replacement by, e.g., shifting group
+;; numbers around. Similarly, if TO is a function, we want it to have available
+;; the match data from the perspective of just the one particular FROM regexp
+;; that matched.
+;;
+;; To solve this properly, we preprocess each FROM regexp into a list (FLAT
+;; GROUPS). FLAT is the "flattened" version of FROM where any explicitly
+;; numbered groups have been replaced with implicit ones. GROUPS is a list of
+;; indices, each related to an implicit group in FLAT, in order from left to
+;; right. The index is the number of the corresponding group in REGEXP, which
+;; gives us a 1-to-1 mapping between the groups of REGEXP and FLAT and allows us
+;; to reconstruct the "local" information from our "global" matcher information.
+;; The matcher actually becomes:
+;;
+;;   \(FLAT-1\)\|...\|\(FLAT-N\)
+;;
+;; The replacement function we use in our call to `perform-replace' must then
+;; determine which of the pairs matched and activate the appropriate match data.
+;; For this purpose, we construct a "replacement table", which is an alist where
+;; each pair has a corresponding entry (BASE . (FROM TO FLAT GROUPS)).
+;;
+;; The key BASE is the index of the group wrapped around the alternative for the
+;; particular pair in the matcher regexp. Because the matcher regexp consists
+;; only of implicit groups, we can be sure that zero or more successive groups
+;; starting at BASE + 1 in the matcher regexp all correspond to the groups
+;; specified by the user for that pair. The match data is then constructed by
+;; mapping each such successive group to the corresponding group in the original
+;; FROM regexp, given by GROUPS. If GROUPS contains duplicates, the rightmost
+;; mapping wins.
+;;
+;; Whenever called, our replacement function can scan the table to determine
+;; which of the pairs matched, use BASE and GROUPS to construct the match data
+;; appropriate for the paira and then perform the replacement. The order of the
+;; entries in the table is significant and matches the order of the given
+;; replacement pairs.
+
+;; * Explicitly Numbered Groups
+;;
+;; Even though the Emacs manual claims "There is no particular restriction on
+;; the numbering" in the paragraph on explicitly numbered groups, the regexp
+;; engine doesn't allow them to use the same index as any of their enclosing
+;; (parent) groups. E.g. the following is invalid:
+;;
+;;   \(hello \(?1:there\)\)
+;;
+;; Our approach actually ends up fixing this limitation for any regexp specified
+;; by the user, while following the same rightmost-match-wins semantics.
+;;
+;; See (elisp) Regexp Backslash in the Emacs Lisp manual and
+;; https://lists.gnu.org/archive/html/help-gnu-emacs/2012-01/msg00283.html for a
+;; discussion on the Emacs mailing list.
+
+;; * `noedit' Flag
+;;
+;; The `replace-match-maybe-edit' function is in charge of processing the query
+;; edit (`\?') feature in the replacement. It is given a `noedit' parameter
+;; maintained by the body of `perform-replace', which is used as a flag to tell
+;; whether the replacement contains a query edit or not. If it doesn't, no query
+;; edit processing is done.
+;;
+;; From the looks of it, this is supposed to be an optimization. However, until
+;; the flag becomes non-nil, it is set every time again and again upon each
+;; replacement. Once it becomes non-nil, `perform-replace' stops processing
+;; query edits in replacements.
+;;
+;; While this is fine for replacements that are constant, it cannot work for
+;; cases where the replacement string is dynamically constructed by a function.
+;; In those cases, query edits will work until a replacement with no query edit
+;; is encountered, after which they stop working.
+;;
+;; This actually uncovered a bug in `map-query-replace-regexp' which ends up
+;; making use of the replacement function feature. Using "hello\? there world\?"
+;; as the replacement string showcases the bug.
+;;
+;; To fix this, we advise `replace-match-maybe-edit' to always treat `noedit'
+;; as nil.
+
+;; * Messages
+;;
+;; We advise a few functions in order to provide the user with nice messages
+;; during a replacement session, instead of e.g. the big and ugly matcher
+;; regexp.
+;;
+;; Luckily we are able to make the advice quite specific with the use of a
+;; string property (`query-replace-parallel--tag') to detect when to fire.
+
+;; * TODO
+;;
+;; - Report the mentioned `map-query-replace-regexp' `noedit' bug.
+;;
+;; - Aside from the one we patched, there remains one other "Query replacing
+;;   ..." message. However, this one is printed into the help buffer of query
+;;   replace and not at all that visible, so maybe this isn't so important.
+;;   Also, fixing it would mean advising `concat' or `princ' which doesn't sound
+;;   good (but then again, neither does advising `message' which we already do
+;;   :-)).
+;;
+;; - Add assumption checks/assertions/warnings for our advice, since we're
+;;   meddling with the internals of `replace.el'. Luckily this is all purely
+;;   aesthetical, but it would be nice to get a warning if anything ever changes
+;;   unexpectedly.
+
 ;;; Code:
 
 (require 'cl-lib)
@@ -46,9 +200,9 @@ list (PAIRS DELIM BACKWARD).
 
 PAIRS is a list of conses (FROM . TO). FROM is the source string
 read from the user. If REGEXP-FLAG is nil, TO is the replacement
-string read from the user. Otherwise, TO can be a cons depending
-on whether the replacement string uses the Lisp expression `\,'
-feature or not.
+string read from the user. Otherwise, TO can also be a cons
+depending on whether the read replacement string uses the Lisp
+expression `\\,' feature or not.
 
 DELIM and BACKWARD are taken from the return value of the last
 call to `query-replace-read-args' and should be forwarded as the
@@ -64,9 +218,21 @@ arguments to the query replacement functions."
            finally (cl-return (list pairs delim backward))))
 
 (defun query-replace-parallel--matcher (regexps)
+  "Given a list of regexps, return a regexp that matches either of
+them (in order), but with a capture group wrapped around each
+one."
   (rx-to-string `(or ,@(mapcar (lambda (r) `(group (regexp ,r))) regexps))))
 
 (defun query-replace-parallel--flatten (regexp)
+  "Given a regexp, return the list (FLAT GROUPS).
+
+FLAT is the \"flattened\" version of REGEXP, where each
+explicitly numbered group is replaced with an implicit one.
+
+GROUPS is a list of indices, each related to an implicit group in
+FLAT, in order from left to right. The index is the number of the
+corresponding group in REGEXP, which gives us a 1-to-1 mapping
+between the groups of REGEXP and FLAT."
   (let ((i 1)
         (groups '()))
     (cl-labels ((walk (root)
@@ -87,15 +253,35 @@ arguments to the query replacement functions."
         (list (rx-to-string form) (nreverse groups))))))
 
 (defun query-replace-parallel--table (pairs regexp-flag)
+  "Given the list of replacement pairs, construct the replacement
+table.
+
+Each pair is of the form (FROM . TO) and has a corresponding
+entry in the replacement table, which is an alist containing
+entries of the form (BASE . (FROM TO FLAT GROUPS)).
+
+The key BASE is the index of the group wrapped around the
+alternative for the particular pair in the matcher regexp. If
+REGEXP-FLAG is non-nil, FLAT and GROUPS are the result of
+flattening FROM. Otherwise, FLAT is a regexp-quoted version of
+FROM and GROUPS is an empty list."
   (cl-loop with i = 1
            for (from . to) in pairs
-           for (nfrom groups) = (if regexp-flag
-                                    (query-replace-parallel--flatten from)
-                                  (list (regexp-quote from) '()))
-           collect (cons i (list from to nfrom groups))
+           for (flat groups) = (if regexp-flag
+                                   (query-replace-parallel--flatten from)
+                                 (list (regexp-quote from) '()))
+           collect (cons i (list from to flat groups))
            do (cl-incf i (1+ (length groups)))))
 
 (defun query-replace-parallel--match-data (base groups)
+  "With the match data of the matcher regexp active, return the
+match data for the specific alternative corresponding to BASE.
+
+BASE is the index of the group wrapped around the alternative in
+the matcher regexp. GROUPS is a list of indices mapping the
+successive groups (starting at BASE + 1) of the matcher regexp to
+the respective groups in the original non-flat regexp of the
+alternative."
   (let* ((n (if groups (apply #'max groups) 0))
          (data (make-vector (* 2 (1+ n)) nil)))
     (setf (aref data 0) (match-beginning base)
@@ -108,6 +294,8 @@ arguments to the query replacement functions."
     (cl-coerce data 'list)))
 
 (defun query-replace-parallel--quote (string)
+  "Return STRING but with each backslash sequence except for `\\?'
+escaped."
   (string-replace "\\\\?" "\\?" (string-replace "\\" "\\\\" string)))
 
 (defun query-replace-parallel--patch-noedit (args)
@@ -144,8 +332,15 @@ arguments to the query replacement functions."
       args)))
 
 (defun query-replace-parallel--replacer (table regexp-flag)
+  "Construct a replacement function suitable for a call to
+`perform-replace', which returns the replacement according to the
+given replacement table.
+
+If REGEXP-FLAG is nil, the replacement is taken literally.
+Otherwise, the replacement can use all of the features of
+`perform-replace' replacement."
   (lambda (_arg count)
-    (cl-destructuring-bind (base . (from to _nfrom groups))
+    (cl-destructuring-bind (base . (from to _flat groups))
         (cl-find-if #'match-beginning table :key #'car)
       (setf (caar query-replace-parallel--description) from)
       ;; TO can either be a string or a cons. We handle the case where it's a
