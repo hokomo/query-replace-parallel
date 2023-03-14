@@ -6,7 +6,7 @@
 ;; Author: hokomo <hokomo@airmail.cc>
 ;;         Valentino Picotti <valentino.picotti@gmail.com>
 ;; Version: 0.1-pre
-;; Package-Requires: ((emacs "25.2"))
+;; Package-Requires: ((emacs "25.2") (pcre2el "20161120.2103"))
 ;; Keywords: tools, convenience
 
 ;; This file is not part of GNU Emacs.
