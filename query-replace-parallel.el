@@ -162,6 +162,34 @@
 ;; Luckily we are able to make the advice quite specific with the use of a
 ;; string property (`query-replace-parallel--tag') to detect when to fire.
 
+;; * Related Work
+;;
+;; There have been multiple previous attempts in solving the same problem, which
+;; we take some inspiration from. However, they all stop short of a full
+;; solution in one form or another:
+;;
+;; (1) They only work with literals instead of arbitrary regexps. Even if they
+;;     do mention the necessary `query-replace-regexp' workflow to achieve a
+;;     parallel replace, they don't attempt to generalize and automate it, which
+;;     requires the user to effectively construct the matcher regexp and detect
+;;     the matched pairs by hand.
+;;
+;; (2) They don't integrate with `query-replace'. This loses the commonly useful
+;;     interactive features such as skipping matches, going backward, undoing,
+;;     etc., but also the more advanced ones such as performing a recursive
+;;     edit, or using Lisp expressions (`\,') and query edits (`\?') in
+;;     replacements.
+;;
+;; (3) They don't provide a reusable programmatic interface for the implemented
+;;     functionality.
+;;
+;; See e.g.:
+;;
+;; - https://www.emacswiki.org/emacs/SwappingText
+;; - https://stackoverflow.com/questions/2588277/how-can-i-swap-or-replace-multiple-strings-in-code-at-the-same-time/2592685#2592685
+;; - https://www.masteringemacs.org/article/evaluating-lisp-forms-regular-expressions
+;; - https://tony-zorman.com/posts/query-replace-many.html
+
 ;; * TODO
 ;;
 ;; - Report the mentioned `map-query-replace-regexp' `noedit' bug.
