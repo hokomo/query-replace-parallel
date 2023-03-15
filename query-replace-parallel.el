@@ -384,12 +384,12 @@ Otherwise, the replacement can use all of the features of
     (list newtext fixedcase literal nil match-data backward)))
 
 (defun query-replace-parallel--patch-description (oldfun string)
-  (propertize
-   (funcall oldfun
-            (if (get-text-property 0 'query-replace-parallel--tag string)
-                (caar query-replace-parallel--description)
-              string))
-   'query-replace-parallel--tag t))
+  ;; Detect and forward along our special `query-replace-parallel--tag' property
+  ;; that we can detect in a call to `message'.
+  (let ((res (funcall oldfun string)))
+    (if (get-text-property 0 'query-replace-parallel--tag string)
+        (propertize res 'query-replace-parallel--tag t)
+      res)))
 
 (defun query-replace-parallel--patch-message (args)
   (cl-destructuring-bind (format &optional arg &rest rest) args
