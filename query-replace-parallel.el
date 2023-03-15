@@ -214,10 +214,10 @@
 
 (defun query-replace-parallel--prompt (regexp-flag)
   (concat "Query replace parallel"
-          (and regexp-flag " regexp")
-		  (and current-prefix-arg
+          (and current-prefix-arg
                (if (eq current-prefix-arg '-) " backward" " word"))
-		  (and (use-region-p) " in region")))
+          (and regexp-flag " regexp")
+          (and (use-region-p) " in region")))
 
 (defun query-replace-parallel--read-args (regexp-flag)
   "Interactively read replacement pairs for a parallel query
