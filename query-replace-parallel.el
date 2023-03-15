@@ -85,8 +85,8 @@
 ;; GROUPS). FLAT is the "flattened" version of FROM where any explicitly
 ;; numbered groups have been replaced with implicit ones. GROUPS is a list of
 ;; indices, each related to an implicit group in FLAT, in order from left to
-;; right. The index is the number of the corresponding group in REGEXP, which
-;; gives us a 1-to-1 mapping between the groups of REGEXP and FLAT and allows us
+;; right. The index is the number of the corresponding group in FROM, which
+;; gives us a 1-to-1 mapping between the groups of FROM and FLAT and allows us
 ;; to reconstruct the "local" information from our "global" matcher information.
 ;; The matcher actually becomes:
 ;;
@@ -108,7 +108,7 @@
 ;;
 ;; Whenever called, our replacement function can scan the table to determine
 ;; which of the pairs matched, use BASE and GROUPS to construct the match data
-;; appropriate for the paira and then perform the replacement. The order of the
+;; appropriate for the pair and then perform the replacement. The order of the
 ;; entries in the table is significant and matches the order of the given
 ;; replacement pairs.
 
