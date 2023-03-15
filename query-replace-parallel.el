@@ -156,11 +156,11 @@
 ;; * Messages
 ;;
 ;; We advise a few functions in order to provide the user with nice messages
-;; during a replacement session, instead of e.g. the big and ugly matcher
-;; regexp.
+;; during a replacement session, instead of the big and ugly matcher regexp.
 ;;
 ;; Luckily we are able to make the advice quite specific with the use of a
-;; string property (`query-replace-parallel--tag') to detect when to fire.
+;; string property (`query-replace-parallel--tag') to detect when to fire. See
+;; also the description of `query-replace-parallel--description'.
 
 ;; * Related Work
 ;;
@@ -326,38 +326,22 @@ alternative."
 escaped."
   (string-replace "\\\\?" "\\?" (string-replace "\\" "\\\\" string)))
 
-(defun query-replace-parallel--patch-noedit (args)
-  (cl-destructuring-bind (newtext fixedcase literal _noedit match-data
-                          &optional backward)
-      args
-    (list newtext fixedcase literal nil match-data backward)))
+(defvar query-replace-parallel--description '()
+  "A list of cons cells of the form (DESC . REGEXP-FLAG),
+used by our advice in order to patch the messages displayed by
+`perform-replace'.
 
-(defvar query-replace-parallel--description '())
+We use a list in order to support multiple reentrant invocations
+of `query-replace-parallel-perform-replace', e.g. as a result of
+a recursive edit initiated by the user. Each invocation binds the
+variable and adds a new cons to the front.
 
-(defun query-replace-parallel--patch-description (oldfun string)
-  (propertize
-   (funcall oldfun
-            (if (get-text-property 0 'query-replace-parallel--tag string)
-                (caar query-replace-parallel--description)
-              string))
-   'query-replace-parallel--tag t))
+DESC is initially nil but is mutated by each subsequent
+invocation of our replacement function to be the original FROM
+string provided by the user.
 
-(defun query-replace-parallel--patch-message (args)
-  (cl-destructuring-bind (format &optional arg &rest rest) args
-    (if (and (stringp arg)
-             (get-text-property 0 'query-replace-parallel--tag arg))
-        (let ((nformat (apply
-                        #'propertize
-                        (replace-regexp-in-string
-                         (rx "Query replacing" (group (* nonl)) "regexp %s")
-                         (concat "Query replacing parallel\\1"
-                                 (and (cdar query-replace-parallel--description)
-                                      "regexp ")
-                                 "%s")
-                         format)
-                        (text-properties-at 0 format))))
-          (cl-list* nformat arg rest))
-      args)))
+REGEXP-FLAG is the value of the flag passed to the invocation of
+`query-replace-parallel-perform-replace'.")
 
 (defun query-replace-parallel--replacer (table regexp-flag)
   "Construct a replacement function suitable for a call to
@@ -392,6 +376,37 @@ Otherwise, the replacement can use all of the features of
                  (match-substitute-replacement
                   nto (not (and case-replace case-fold-search)))))
             (set-match-data original)))))))
+
+(defun query-replace-parallel--patch-noedit (args)
+  (cl-destructuring-bind (newtext fixedcase literal _noedit match-data
+                          &optional backward)
+      args
+    (list newtext fixedcase literal nil match-data backward)))
+
+(defun query-replace-parallel--patch-description (oldfun string)
+  (propertize
+   (funcall oldfun
+            (if (get-text-property 0 'query-replace-parallel--tag string)
+                (caar query-replace-parallel--description)
+              string))
+   'query-replace-parallel--tag t))
+
+(defun query-replace-parallel--patch-message (args)
+  (cl-destructuring-bind (format &optional arg &rest rest) args
+    (if (and (stringp arg)
+             (get-text-property 0 'query-replace-parallel--tag arg))
+        (let ((nformat (apply
+                        #'propertize
+                        (replace-regexp-in-string
+                         (rx "Query replacing" (group (* nonl)) "regexp %s")
+                         (concat "Query replacing parallel\\1"
+                                 (and (cdar query-replace-parallel--description)
+                                      "regexp ")
+                                 "%s")
+                         format)
+                        (text-properties-at 0 format))))
+          (cl-list* nformat arg rest))
+      args)))
 
 (defun query-replace-parallel-perform-replace
     (pairs query-flag regexp-flag delimited
