@@ -160,7 +160,7 @@
 ;;
 ;; Luckily we are able to make the advice quite specific with the use of a
 ;; string property (`query-replace-parallel--tag') to detect when to fire. See
-;; also the description of `query-replace-parallel--description'.
+;; also the description of `query-replace-parallel--state'.
 
 ;; * Related Work
 ;;
@@ -194,13 +194,6 @@
 ;;
 ;; - Report the mentioned `map-query-replace-regexp' `noedit' bug.
 ;;
-;; - Aside from the one we patched, there remains one other "Query replacing
-;;   ..." message. However, this one is printed into the help buffer of query
-;;   replace and not at all that visible, so maybe this isn't so important.
-;;   Also, fixing it would mean advising `concat' or `princ' which doesn't sound
-;;   good (but then again, neither does advising `message' which we already do
-;;   :-)).
-;;
 ;; - Add assumption checks/assertions/warnings for our advice, since we're
 ;;   meddling with the internals of `replace.el'. Luckily this is all purely
 ;;   aesthetical, but it would be nice to get a warning if anything ever changes
@@ -211,6 +204,7 @@
 (require 'cl-lib)
 (require 'pcre2el)
 (require 'rx)
+(eval-when-compile (require 'subr-x))
 
 (defun query-replace-parallel--prompt (regexp-flag)
   (concat "Query replace parallel"
@@ -326,7 +320,7 @@ alternative."
 escaped."
   (string-replace "\\\\?" "\\?" (string-replace "\\" "\\\\" string)))
 
-(defvar query-replace-parallel--description '()
+(defvar query-replace-parallel--state '()
   "A list of cons cells of the form (DESC . REGEXP-FLAG),
 used by our advice in order to patch the messages displayed by
 `perform-replace'.
@@ -354,7 +348,7 @@ Otherwise, the replacement can use all of the features of
   (lambda (_arg count)
     (cl-destructuring-bind (base . (from to _flat groups))
         (cl-find-if #'match-beginning table :key #'car)
-      (setf (caar query-replace-parallel--description) from)
+      (setf (caar query-replace-parallel--state) from)
       ;; TO can either be a string or a cons. We handle the case where it's a
       ;; literal string specially to avoid computing and setting the match data.
       (if (and (stringp to) (not regexp-flag))
@@ -391,22 +385,40 @@ Otherwise, the replacement can use all of the features of
         (propertize res 'query-replace-parallel--tag t)
       res)))
 
+(defconst query-replace-parallel--message-regexp
+  (rx "Query replacing" (group (+ nonl)) "regexp %s"))
+
 (defun query-replace-parallel--patch-message (args)
   (cl-destructuring-bind (format &optional arg &rest rest) args
-    (if (and (stringp arg)
-             (get-text-property 0 'query-replace-parallel--tag arg))
-        (let ((nformat (apply
-                        #'propertize
-                        (replace-regexp-in-string
-                         (rx "Query replacing" (group (* nonl)) "regexp %s")
-                         (concat "Query replacing parallel\\1"
-                                 (and (cdar query-replace-parallel--description)
-                                      "regexp ")
-                                 "%s")
-                         format)
-                        (text-properties-at 0 format))))
-          (cl-list* nformat arg rest))
+    (if-let ((pos (and (stringp arg)
+                       (get-text-property 0 'query-replace-parallel--tag arg)
+                       (string-match query-replace-parallel--message-regexp
+                                     format))))
+        (let ((rep (concat "Query replacing parallel\\1"
+                           (and (cdar query-replace-parallel--state) "regexp ")
+                           "%s")))
+          (cl-list* (replace-match
+                     (apply #'propertize rep (text-properties-at pos format))
+                     t nil format)
+                    (caar query-replace-parallel--state)
+                    rest))
       args)))
+
+(defconst query-replace-parallel--help-regexp
+  (rx "Query replacing" (group (+ nonl)) "regexp " (+ nonl) " with"))
+
+(defun query-replace-parallel--patch-help ()
+  (save-excursion
+    (goto-char (point-min))
+    (when-let ((pos (re-search-forward query-replace-parallel--help-regexp
+                                       nil t)))
+      (let ((inhibit-read-only t)
+            (rep (concat "Query replacing parallel\\1"
+                         (and (cdar query-replace-parallel--state) "regexp ")
+                         (caar query-replace-parallel--state)
+                         " with")))
+        (replace-match (apply #'propertize rep (text-properties-at pos))
+                       t nil)))))
 
 (defun query-replace-parallel-perform-replace
     (pairs query-flag regexp-flag delimited
@@ -428,20 +440,22 @@ BACKWARD AND REGION-NONCONTIGUOUS-P are as in `perform-replace',
 which see."
   (let* ((table (query-replace-parallel--table pairs regexp-flag))
          (regexp (query-replace-parallel--matcher (mapcar #'cadddr table)))
-         (query-replace-parallel--description
-          (cons (cons nil regexp-flag) query-replace-parallel--description)))
-    (advice-add #'replace-match-maybe-edit :filter-args
-                #'query-replace-parallel--patch-noedit)
-    (advice-add #'query-replace-descr :around
-                #'query-replace-parallel--patch-description)
-    (advice-add #'message :filter-args
-                #'query-replace-parallel--patch-message)
+         (query-replace-parallel--state (cons (cons nil regexp-flag)
+                                              query-replace-parallel--state)))
     (unwind-protect
-        (perform-replace
-         (propertize regexp 'query-replace-parallel--tag t)
-         (cons (query-replace-parallel--replacer table regexp-flag) nil)
-         query-flag :regexp delimited nil map start end backward
-         region-noncontiguous-p)
+        (let ((temp-buffer-show-hook (cons #'query-replace-parallel--patch-help
+                                           temp-buffer-show-hook)))
+          (advice-add #'replace-match-maybe-edit :filter-args
+                      #'query-replace-parallel--patch-noedit)
+          (advice-add #'query-replace-descr :around
+                      #'query-replace-parallel--patch-description)
+          (advice-add #'message :filter-args
+                      #'query-replace-parallel--patch-message)
+          (perform-replace
+           (propertize regexp 'query-replace-parallel--tag t)
+           (cons (query-replace-parallel--replacer table regexp-flag) nil)
+           query-flag :regexp delimited nil map start end backward
+           region-noncontiguous-p))
       (advice-remove #'replace-match-maybe-edit
                      #'query-replace-parallel--patch-noedit)
       (advice-remove #'query-replace-descr
