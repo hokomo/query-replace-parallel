@@ -373,7 +373,7 @@ Otherwise, the replacement can use all of the features of
         (let ((original (match-data)))
           (set-match-data (query-replace-parallel--match-data base groups))
           (unwind-protect
-              (let ((nto (cl-etypecase to
+              (let ((rep (cl-etypecase to
                            (string to)
                            (cons (funcall (car to) (cdr to) count)))))
                 ;; We first do what `perform-replace' would normally do, i.e.
@@ -384,7 +384,7 @@ Otherwise, the replacement can use all of the features of
                 ;; leave for the caller to handle.
                 (query-replace-parallel--quote
                  (match-substitute-replacement
-                  nto (not (and case-replace case-fold-search)))))
+                  rep (not (and case-replace case-fold-search)))))
             (set-match-data original)))))))
 
 (defun query-replace-parallel--patch-noedit (args)
