@@ -151,5 +151,19 @@ implementation notes in the commentary."
    "1foo 2bar 1baz 2quux 2bar 2foo 1baz 1quux"
    "foo BAR baz QUUX BAR FOO baz quux"))
 
+(ert-deftest query-replace-parallel--func ()
+  "Use a function that constructs the replacement."
+  (query-replace-parallel--test
+   `(,(cons (rx "1" (group (+ (not blank))))
+            (cons (lambda (_arg _count) (match-string 1)) nil))
+     ,(cons (rx "2" (group (+ (not blank))))
+            (cons (lambda (_arg _count) (replace-quote (match-string 1))) nil))
+     ,(cons (rx "3" (group (+ (not blank))))
+            (cons (lambda (_arg _count) "\\1") nil))
+     ,(cons (rx "4" (group (+ (not blank))))
+            (cons (lambda (_arg _count) (replace-quote "\\1")) nil)))
+   "1foo 2bar 4baz 3foo 2quux 4bar 3baz 2bar\\1 1foo\\1 4quux 3quux"
+   "foo bar \\1 foo quux \\1 baz bar\\1 foofoo\\1 \\1 quux"))
+
 (provide 'query-replace-parallel-tests)
 ;;; query-replace-parallel-tests.el ends here
