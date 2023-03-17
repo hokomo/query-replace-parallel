@@ -200,22 +200,6 @@
 ;;   meddling with the internals of `replace.el'. Luckily this is all purely
 ;;   aesthetical, but it would be nice to get a warning if anything ever changes
 ;;   unexpectedly.
-;;
-;; - Add tests.
-;;
-;;   (defvar *test*
-;;     `(("a12" . "b12")
-;;       ("b12" . "c12")
-;;       ("c12" . "d12")
-;;       ("d12" . "a12")))
-;;
-;;   (defvar *test-regexp*
-;;     `((,(rx "a" (group digit (group digit))) . "\\2 \\1 \\?")
-;;       (,(rx "b" (group digit (group-n 4 digit))) . "\\1")
-;;       (,(rx "c" (group digit (group-n 1 digit))) . "\\1")
-;;       (,(rx "d" (group-n 3 digit) (group-n 3 digit)) . "\\3")))
-;;
-;;   Another good example is "stopwatch" -> "timer", "watch" -> "wristwatch".
 
 ;;; Code:
 
@@ -362,7 +346,9 @@ given replacement table.
 
 If REGEXP-FLAG is nil, the replacement is taken literally.
 Otherwise, the replacement can use all of the features of
-`perform-replace' replacement."
+`perform-replace' replacement.
+
+The produced replacement function preserves the match data."
   (lambda (_arg count)
     (cl-destructuring-bind (base . (from to _flat groups))
         (cl-find-if #'match-beginning table :key #'car)
