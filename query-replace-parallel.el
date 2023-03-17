@@ -37,6 +37,8 @@
 ;; We provide the full functionality of `query-replace', including regexps,
 ;; capture references (`\N', `\&'), Lisp expressions (`\,') and query edits
 ;; (`\?'). See `query-replace-regexp' for the details.
+
+;; * Usage
 ;;
 ;; Use `query-replace-parallel' if you want to replace literal strings. This is
 ;; the parallel counterpart to `query-replace'.
