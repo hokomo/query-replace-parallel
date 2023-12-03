@@ -48,7 +48,7 @@
       (goto-char (point-min))
       (cl-loop for i from 1
                while (re-search-forward regexp nil t)
-               for rep = (funcall replacer nil 0)
+               for rep = (funcall replacer nil (1- i))
                do (message "Occurrence %d: replacing %S with %S"
                            i (match-string 0) rep)
                   (replace-match rep t))
