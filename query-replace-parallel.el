@@ -3,7 +3,7 @@
 ;; Copyright (C) 2023 hokomo
 ;; Copyright (C) 2023 Valentino Picotti
 
-;; Author: hokomo <hokomo@airmail.cc>
+;; Author: hokomo <hokomo@disroot.org>
 ;;         Valentino Picotti <valentino.picotti@gmail.com>
 ;; Version: 0.1-pre
 ;; Package-Requires: ((emacs "25.2") (pcre2el "20161120.2103"))
