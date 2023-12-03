@@ -1,0 +1,18 @@
+* =query-replace-parallel=
+
+A parallel variant of Emacs' built-in =query-replace= and =query-replace-parallel=.
+
+The package is not yet published on an Elisp package archive, so for now, clone
+the repository (or download the main =query-replace-parallel.el= Elisp file) and
+load it manually.
+
+For example, if you've downloaded the main Elisp file to the directory
+=~/query-replace-parallel=, you can use =use-package= like so:
+
+#+BEGIN_SRC emacs-lisp
+  (use-package query-replace-parallel
+    :load-path "~/query-replace-parallel"
+    :commands (query-replace-parallel query-replace-parallel-regexp))
+#+END_SRC
+
+See our [[https://emacsconf.org/2023/talks/parallel/][EmacsConf 2023 talk]] for more information.
