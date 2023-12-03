@@ -369,7 +369,7 @@ The produced replacement function preserves the match data."
                 ;; custom match data is active. Then, we escape all of the
                 ;; backslash sequences so that they don't get interpreted again
                 ;; by the calling `perform-replace', except for `\\?' which we
-                ;; leave for the caller to handle.
+                ;; leave for it to handle.
                 (query-replace-parallel--quote
                  (match-substitute-replacement
                   rep (not (and case-replace case-fold-search)))))
@@ -432,16 +432,20 @@ The produced replacement function preserves the match data."
 are performed in a single pass and cannot erroneously replace a
 previous replacement.
 
-Each element of PAIRS has to be a cons (FROM . TO), and specifies
-that occurrences of the regexp FROM should be replaced with TO.
-TO can either be a string or a cons, which have the same meaning
-as in `perform-replace'. Unlike `perform-replace' however, it
-cannot be a list of strings, and this function omits the
-`replace-count' argument.
+PAIRS is a list of conses of the form (FROM . TO) and specifies
+that occurrences of the regexp FROM should be replaced with the
+string TO. TO can either be a string or a cons, which have the
+same meaning as in `perform-replace'. Unlike `perform-replace'
+however, it cannot be a list of strings.
+
+Matches are always processed earliest first, regardless of the
+length of the match or the order of the replacement pairs. If two
+matches occur at the same position, then the order of the pairs
+is significant and the one earlier in the list wins.
 
 Arguments QUERY-FLAG, REGEXP-FLAG, DELIMITED, MAP, START, END,
 BACKWARD AND REGION-NONCONTIGUOUS-P are as in `perform-replace',
-which see."
+which see. The REPEAT-COUNT argument is not supported."
   (let* ((table (query-replace-parallel--table pairs regexp-flag))
          (regexp (query-replace-parallel--matcher (mapcar #'cadddr table)))
          (query-replace-parallel--state (cons (cons nil regexp-flag)
@@ -484,9 +488,15 @@ which see."
 are performed in a single pass and cannot erroneously replace a
 previous replacement.
 
-Each element of PAIRS has to be a cons (FROM . TO), and specifies
+PAIRS is a list of conses of the form (FROM . TO) and specifies
 that occurrences of the string FROM should be replaced with the
-string TO.
+string TO. TO can either be a string or a cons, which have the
+same meaning as in `perform-replace'.
+
+Matches are always processed earliest first, regardless of the
+length of the match or the order of the replacement pairs. If two
+matches occur at the same position, then the order of the pairs
+is significant and the one earlier in the list wins.
 
 Arguments DELIMITED, START, END, BACKWARD and
 REGION-NONCONTIGUOUS-P are passed to
@@ -503,13 +513,21 @@ REGION-NONCONTIGUOUS-P are passed to
 replacements are performed in a single pass and cannot
 erroneously replace a previous replacement.
 
-Each element of PAIRS has to be a cons (FROM . TO), and specifies
-that matches of the regexp FROM should be replaced with the
-string TO, which is interpreted the same as the replacement
-string in `query-replace-regexp'.
+PAIRS is a list of conses of the form (FROM . TO) and specifies
+that occurrences of the regexp FROM should be replaced with the
+string TO. TO can either be a string or a cons, which have the
+same meaning as in `perform-replace'. The final string is
+interpreted the same as the replacement string in
+`query-replace-regexp'.
 
-If more than one FROM regexp matches, the one appearing earlier
-in the list has priority.
+In interactive calls, the replacement string entered at the
+prompt can contain `\\,' followed by a Lisp expression, just as in
+`query-replace-regexp'.
+
+Matches are always processed earliest first, regardless of the
+length of the match or the order of the replacement pairs. If two
+matches occur at the same position, then the order of the pairs
+is significant and the one earlier in the list wins.
 
 Arguments DELIMITED, START, END, BACKWARD and
 REGION-NONCONTIGUOUS-P are passed to
