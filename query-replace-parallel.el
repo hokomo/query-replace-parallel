@@ -231,13 +231,11 @@ expression `\\,' feature or not.
 DELIM and BACKWARD are taken from the return value of the last
 call to `query-replace-read-args' and should be forwarded as the
 arguments to the query replacement functions."
-  (cl-loop for (from to delim backward)
-             = (query-replace-read-args
-                (query-replace-parallel--prompt regexp-flag) regexp-flag)
+  (cl-loop for i below (prefix-numeric-value current-prefix-arg)
+           for (from to delim backward)
+           = (query-replace-read-args
+              (query-replace-parallel--prompt regexp-flag) regexp-flag)
            for pair = (cons from to)
-           ;; NOTE: `query-replace-read-args' will return the last pair from
-           ;; history in case of empty input. That's our signal to stop reading.
-           until (member pair pairs)
            collect pair into pairs
            finally (cl-return (list pairs delim backward))))
 
