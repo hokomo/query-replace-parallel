@@ -71,10 +71,10 @@
 ;;   \(FROM-1\)\|...\|\(FROM-N\)
 ;;
 ;; This regexp allows us to match any of the given replacement pairs (those
-;; appearing earlier in the list have priority), while also being able to tell
-;; which particular pair matched. However, any of the FROM regexps might contain
-;; their own capture groups, so we can't immediately tell what are the indices
-;; of our top-level groups.
+;; appearing earlier in the list have priority in case multiple match at the
+;; same position), while also being able to tell which particular pair matched.
+;; However, any of the FROM regexps might contain their own capture groups, so
+;; we can't immediately tell what are the indices of our top-level groups.
 ;;
 ;; More generally, we want the user to be able to treat each replacement in
 ;; isolation and use advanced features such as explicitly numbered groups
