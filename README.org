@@ -1,6 +1,7 @@
 * =query-replace-parallel=
 
-A parallel variant of Emacs' built-in =query-replace= and =query-replace-parallel=.
+A parallel variant of Emacs' built-in =query-replace= and
+=query-replace-regexp=.
 
 The package is not yet published on an Elisp package archive, so for now, clone
 the repository (or download the main =query-replace-parallel.el= Elisp file) and
