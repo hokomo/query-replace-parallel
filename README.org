@@ -16,3 +16,50 @@ For example, if you've downloaded the main Elisp file to the directory
 #+END_SRC
 
 See our [[https://emacsconf.org/2023/talks/parallel/][EmacsConf 2023 talk]] for more information.
+
+* FAQ
+
+** Replacing =query-replace=
+
+=query-replace-parallel= can be used as a drop-in replacement for the standard
+=query-replace=. An easy way to do this is to remap =query-replace=:
+
+#+BEGIN_SRC emacs-lisp
+  (global-set-key [remap query-replace] #'query-replace-parallel)
+  (global-set-key [remap query-replace-regexp] #'query-replace-parallel-regexp)
+#+END_SRC
+
+** Prefix Argument For Number of Pairs
+
+The prefix argument to =query-replace-parallel= is treated just as in
+=query-replace=, i.e. it determines whether to perform whole-world and/or
+backward replacements.
+
+If this is something you rarely use, you might like to instead [[https://github.com/hokomo/query-replace-parallel/pull/2][repurpose the
+prefix argument]] to explicitly specify the number of replacement pairs to
+input, and to default to just a single pair without a prefix argument. This
+removes having to press enter one final time to terminate the usual prompt.
+
+You can use the following advice to achieve this:
+
+#+BEGIN_SRC emacs-lisp
+  (define-advice query-replace-parallel--prompt
+      (:override (regexp-flag n) hok/count-arg)
+    (concat "Query replace parallel"
+            (and regexp-flag " regexp")
+            (and (use-region-p) " in region")
+            (and n (format " (%d)" n))))
+
+  (define-advice query-replace-parallel--read-args
+      (:override (regexp-flag) hok/count-arg)
+    (let ((n (prefix-numeric-value current-prefix-arg)))
+      (cl-loop for i from n downto 1
+               for (from to delim backward)
+                 = (let ((current-prefix-arg nil))
+                     (query-replace-read-args
+                      (query-replace-parallel--prompt regexp-flag (and (> n 1) i))
+                      regexp-flag))
+               for pair = (cons from to)
+               collect pair into pairs
+               finally (cl-return (list pairs delim backward)))))
+#+END_SRC
