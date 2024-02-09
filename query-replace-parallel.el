@@ -481,6 +481,7 @@ which see. The REPEAT-COUNT argument is not supported."
           backward
           (and (use-region-p) (region-noncontiguous-p)))))
 
+;;;###autoload
 (defun query-replace-parallel (pairs &optional delimited start end
                                        backward region-noncontiguous-p)
   "Perform multiple replacements given by PAIRS as if by
@@ -506,6 +507,7 @@ REGION-NONCONTIGUOUS-P are passed to
    pairs :query nil delimited nil start end backward
    region-noncontiguous-p))
 
+;;;###autoload
 (defun query-replace-parallel-regexp (pairs &optional delimited start end
                                               backward region-noncontiguous-p)
   "Perform multiple replacements given by PAIRS as if by
