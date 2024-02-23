@@ -36,10 +36,10 @@ The prefix argument to =query-replace-parallel= is treated just as in
 =query-replace=, i.e. it determines whether to perform whole-world and/or
 backward replacements.
 
-If this is something you rarely use, you might like to instead [[https://github.com/hokomo/query-replace-parallel/pull/2][repurpose the
-prefix argument]] to explicitly specify the number of replacement pairs to
-input, and to default to just a single pair without a prefix argument. This
-removes having to press enter one final time to terminate the usual prompt.
+If this is something you rarely use, [[https://github.com/hokomo/query-replace-parallel/pull/2][you might like]] to instead repurpose the
+prefix argument to explicitly specify the number of replacement pairs to input,
+and to default to just a single pair without a prefix argument. This removes
+having to press enter one final time to terminate the usual prompt.
 
 You can use the following advice to achieve this:
 
